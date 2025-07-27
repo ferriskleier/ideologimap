@@ -10,7 +10,7 @@ const ollama = createOllama({
 });
 
 // Read and parse the political compass questions
-const csvPath = join(process.cwd(), "political-compass/political_compass_question-weights.csv");
+const csvPath = join(process.cwd(), "lib/political_compass_question-weights.csv");
 const csvContent = readFileSync(csvPath, "utf-8");
 const questions = csvContent
   .split("\n")
