@@ -51,6 +51,12 @@ export function deletePerson(id: number): void {
   stmt.run(id);
 }
 
+export function personExists(name: string): boolean {
+  const stmt = db.prepare('SELECT COUNT(*) as count FROM people WHERE LOWER(name) = LOWER(?)');
+  const result = stmt.get(name) as { count: number };
+  return result.count > 0;
+}
+
 // Initialize with Ayn Rand if the database is empty
 const peopleCount = db.prepare('SELECT COUNT(*) as count FROM people').get() as { count: number };
 if (peopleCount.count === 0) {

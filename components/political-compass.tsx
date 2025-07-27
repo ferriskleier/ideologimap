@@ -1,6 +1,9 @@
 "use client";
 
 import { useRef, useState, useEffect, MouseEvent, WheelEvent } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { toast } from "sonner";
 
 interface ViewBox {
   x: number;
@@ -41,6 +44,9 @@ export default function PoliticalCompass() {
     width: 24,
     height: 24,
   });
+  const [personName, setPersonName] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [loadingProgress, setLoadingProgress] = useState<{ current: number; total: number; message: string } | null>(null);
 
   const drawCompass = (ctx: CanvasRenderingContext2D) => {
     const canvas = canvasRef.current;
@@ -448,8 +454,140 @@ export default function PoliticalCompass() {
     });
   };
 
+  const handleAddPerson = async () => {
+    if (!personName.trim()) {
+      toast.error("Please enter a person's name");
+      return;
+    }
+
+    if (personName.length > 50) {
+      toast.error("Name must be 50 characters or less");
+      return;
+    }
+
+    setIsLoading(true);
+    setLoadingProgress(null);
+    
+    try {
+      const response = await fetch("/api/people/ai-add-stream", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ name: personName.trim() }),
+      });
+
+      if (!response.ok) {
+        toast.error("Failed to connect to server");
+        return;
+      }
+
+      const reader = response.body?.getReader();
+      if (!reader) {
+        toast.error("Failed to read response");
+        return;
+      }
+
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || "";
+
+        for (const line of lines) {
+          if (line.startsWith("data: ")) {
+            const data = line.slice(6);
+            if (data.trim()) {
+              try {
+                const parsed = JSON.parse(data);
+                
+                if (parsed.error) {
+                  toast.error(parsed.error);
+                  setLoadingProgress(null);
+                  return;
+                }
+                
+                if (parsed.progress) {
+                  setLoadingProgress(parsed.progress);
+                }
+                
+                if (parsed.success && parsed.person) {
+                  toast.success(`Successfully added ${parsed.person.name} to the map!`);
+                  setPersonName("");
+                  setLoadingProgress(null);
+                  
+                  // Reload people to show the new addition
+                  const peopleResponse = await fetch("/api/people");
+                  const peopleData = await peopleResponse.json();
+                  setPeople(peopleData);
+                }
+              } catch (e) {
+                console.error("Failed to parse SSE data:", e);
+              }
+            }
+          }
+        }
+      }
+    } catch (error) {
+      toast.error("An error occurred. Please try again.");
+      console.error("Error adding person:", error);
+    } finally {
+      setIsLoading(false);
+      setLoadingProgress(null);
+    }
+  };
+
   return (
     <div className="relative w-full h-full">
+      <div className="absolute top-4 left-4 bg-white p-4 rounded shadow-md z-10 max-w-sm">
+        <div className="space-y-2">
+          <h3 className="font-medium text-sm">Add new notable Person</h3>
+          <p className="text-xs text-gray-600">
+            Keep in mind that only notable people with enough data from Wikipedia and other sources will be added
+          </p>
+          <div className="flex gap-2">
+            <Input
+              type="text"
+              placeholder="Person's name"
+              value={personName}
+              onChange={(e) => setPersonName(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleAddPerson()}
+              disabled={isLoading}
+              maxLength={50}
+              className="flex-1"
+            />
+            <Button 
+              onClick={handleAddPerson}
+              disabled={isLoading || !personName.trim()}
+              size="sm"
+            >
+              {isLoading ? "Adding..." : "Add"}
+            </Button>
+          </div>
+          {loadingProgress && (
+            <div className="mt-3 space-y-2">
+              <div className="text-xs text-gray-600">
+                {loadingProgress.message}
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2">
+                <div 
+                  className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                  style={{ width: `${(loadingProgress.current / loadingProgress.total) * 100}%` }}
+                />
+              </div>
+              <div className="text-xs text-gray-500 text-center">
+                {loadingProgress.current} / {loadingProgress.total}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+      
       {mouseCoords && (
         <div className="absolute bottom-4 right-4 bg-white px-4 py-2 rounded shadow-md z-10 pointer-events-none">
           <span className="font-mono text-sm">
