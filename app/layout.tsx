@@ -28,7 +28,22 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        {children}
+        <div className="flex flex-col min-h-screen">
+          <main className="flex-1">
+            {children}
+          </main>
+          <footer className="bg-gray-100 border-t py-4">
+            <div className="max-w-7xl mx-auto px-4 flex justify-center gap-6 text-sm text-gray-600">
+              <a href="/impressum" className="hover:text-gray-900 hover:underline">
+                Impressum
+              </a>
+              <span className="text-gray-400">|</span>
+              <a href="/datenschutz" className="hover:text-gray-900 hover:underline">
+                Datenschutz
+              </a>
+            </div>
+          </footer>
+        </div>
         <Toaster position="bottom-center" />
       </body>
     </html>

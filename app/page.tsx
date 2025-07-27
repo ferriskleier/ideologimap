@@ -2,8 +2,8 @@ import PoliticalCompass from "@/components/political-compass";
 
 export default function Home() {
   return (
-    <main className="h-screen w-screen overflow-hidden">
+    <div className="h-[calc(100vh-73px)] w-full overflow-hidden">
       <PoliticalCompass />
-    </main>
+    </div>
   );
 }

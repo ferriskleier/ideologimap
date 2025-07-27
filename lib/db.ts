@@ -57,10 +57,5 @@ export function personExists(name: string): boolean {
   return result.count > 0;
 }
 
-// Initialize with Ayn Rand if the database is empty
-const peopleCount = db.prepare('SELECT COUNT(*) as count FROM people').get() as { count: number };
-if (peopleCount.count === 0) {
-  addPerson('Ayn Rand', 8, -8, 'https://en.wikipedia.org/wiki/Ayn_Rand');
-}
 
 export default db;
