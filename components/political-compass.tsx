@@ -17,6 +17,16 @@ interface Person {
   wikipedia_url: string | null;
 }
 
+interface IdeologyLabel {
+  text: string;
+  x: number;
+  y: number;
+}
+
+const ideologyLabels: IdeologyLabel[] = [
+  { text: "Anarcho Capitalism", x: 9, y: -9.5 }
+];
+
 export default function PoliticalCompass() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -35,18 +45,22 @@ export default function PoliticalCompass() {
   const drawCompass = (ctx: CanvasRenderingContext2D) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-
+    
+    // Get display dimensions (not the scaled canvas dimensions)
+    const displayWidth = canvas.offsetWidth;
+    const displayHeight = canvas.offsetHeight;
+    
     // Clear canvas with background color
     ctx.fillStyle = "#f5f5f5";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillRect(0, 0, displayWidth, displayHeight);
 
     // Save the current state
     ctx.save();
 
-    // Calculate the square size and centering
-    const size = Math.min(canvas.width, canvas.height);
-    const offsetX = (canvas.width - size) / 2;
-    const offsetY = (canvas.height - size) / 2;
+    // Calculate the square size and centering using display dimensions
+    const size = Math.min(displayWidth, displayHeight);
+    const offsetX = (displayWidth - size) / 2;
+    const offsetY = (displayHeight - size) / 2;
 
     // Apply transformations for square aspect ratio
     ctx.translate(offsetX, offsetY);
@@ -70,6 +84,16 @@ export default function PoliticalCompass() {
     // Bottom-right (Libertarian Right) - Muted Yellow
     ctx.fillStyle = "#fff59d";
     ctx.fillRect(0, 0, 10, 10);
+
+    // Draw ideology labels in the background
+    ctx.fillStyle = "rgba(100, 100, 100, 0.3)";
+    ctx.font = `${20 / scale}px Arial`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    
+    ideologyLabels.forEach(label => {
+      ctx.fillText(label.text, label.x, -label.y);
+    });
 
     // Draw grid
     ctx.strokeStyle = "#ddd";
@@ -102,8 +126,8 @@ export default function PoliticalCompass() {
     ctx.stroke();
 
     // Add labels
-    ctx.fillStyle = "#333";
-    ctx.font = `${16 / scale}px Arial`;
+    ctx.fillStyle = "#1f2937";
+    ctx.font = `bold ${16 / scale}px Arial`;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
 
@@ -117,7 +141,7 @@ export default function PoliticalCompass() {
 
     // Add axis values
     ctx.font = `${10 / scale}px Arial`;
-    ctx.fillStyle = "#666";
+    ctx.fillStyle = "#4b5563";
     ctx.textAlign = "center";
     ctx.textBaseline = "top";
     
@@ -151,12 +175,14 @@ export default function PoliticalCompass() {
     people.forEach((person) => {
       // Draw the red dot
       ctx.fillStyle = "#dc2626";
-      ctx.strokeStyle = "#7f1d1d";
+      ctx.strokeStyle = "#991b1b";
       ctx.lineWidth = 2 / scale;
+      
+      const dotRadius = 6 / scale;
       
       // Canvas Y is inverted, so negate person.y
       ctx.beginPath();
-      ctx.arc(person.x, -person.y, 6 / scale, 0, 2 * Math.PI);
+      ctx.arc(person.x, -person.y, dotRadius, 0, 2 * Math.PI);
       ctx.fill();
       ctx.stroke();
 
@@ -165,7 +191,7 @@ export default function PoliticalCompass() {
       ctx.font = `bold ${14 / scale}px Arial`;
       ctx.textAlign = "center";
       ctx.textBaseline = "bottom";
-      ctx.fillText(person.name, person.x, -person.y - 10 / scale);
+      ctx.fillText(person.name, person.x, -person.y - dotRadius - 4 / scale);
     });
 
     // Restore the state
@@ -191,8 +217,19 @@ export default function PoliticalCompass() {
     if (!ctx) return;
 
     const resizeCanvas = () => {
-      canvas.width = canvas.offsetWidth;
-      canvas.height = canvas.offsetHeight;
+      const dpr = window.devicePixelRatio || 1;
+      
+      // Get the size the canvas should be displayed at
+      const displayWidth = canvas.offsetWidth;
+      const displayHeight = canvas.offsetHeight;
+      
+      // Set the internal size to match the display size multiplied by dpr
+      canvas.width = displayWidth * dpr;
+      canvas.height = displayHeight * dpr;
+      
+      // Scale all drawing operations by the dpr
+      ctx.scale(dpr, dpr);
+      
       drawCompass(ctx);
     };
 
@@ -212,10 +249,14 @@ export default function PoliticalCompass() {
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
 
+    // Use display dimensions, not canvas dimensions
+    const displayWidth = canvas.offsetWidth;
+    const displayHeight = canvas.offsetHeight;
+    
     // Calculate the square size and centering
-    const size = Math.min(canvas.width, canvas.height);
-    const offsetX = (canvas.width - size) / 2;
-    const offsetY = (canvas.height - size) / 2;
+    const size = Math.min(displayWidth, displayHeight);
+    const offsetX = (displayWidth - size) / 2;
+    const offsetY = (displayHeight - size) / 2;
 
     // Check if mouse is within the square compass area
     if (x < offsetX || x > offsetX + size || y < offsetY || y > offsetY + size) {
@@ -243,10 +284,14 @@ export default function PoliticalCompass() {
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
 
+    // Use display dimensions
+    const displayWidth = canvas.offsetWidth;
+    const displayHeight = canvas.offsetHeight;
+    
     // Calculate the square size and centering
-    const size = Math.min(canvas.width, canvas.height);
-    const offsetX = (canvas.width - size) / 2;
-    const offsetY = (canvas.height - size) / 2;
+    const size = Math.min(displayWidth, displayHeight);
+    const offsetX = (displayWidth - size) / 2;
+    const offsetY = (displayHeight - size) / 2;
 
     // Convert to compass coordinates
     const relX = (x - offsetX) / size;
@@ -256,8 +301,8 @@ export default function PoliticalCompass() {
 
     // Check if click is on a person
     const scale = size / viewBox.width;
-    const pixelRadius = 6; // Same as visual radius
-    const clickRadius = (pixelRadius * 1.5) / scale; // Convert pixel radius to world units
+    const dotRadius = 6 / scale;
+    const clickRadius = dotRadius * 1.5; // Make click area slightly larger
     const clickedPerson = people.find(person => {
       const distance = Math.sqrt(
         Math.pow(person.x - compassX, 2) + 
@@ -289,7 +334,9 @@ export default function PoliticalCompass() {
     const dx = e.clientX - dragStart.x;
     const dy = e.clientY - dragStart.y;
 
-    const size = Math.min(canvas.width, canvas.height);
+    const displayWidth = canvas.offsetWidth;
+    const displayHeight = canvas.offsetHeight;
+    const size = Math.min(displayWidth, displayHeight);
     const scale = viewBox.width / size;
 
     let newX = viewBox.x - dx * scale;
@@ -344,9 +391,11 @@ export default function PoliticalCompass() {
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
 
-    const size = Math.min(canvas.width, canvas.height);
-    const offsetX = (canvas.width - size) / 2;
-    const offsetY = (canvas.height - size) / 2;
+    const displayWidth = canvas.offsetWidth;
+    const displayHeight = canvas.offsetHeight;
+    const size = Math.min(displayWidth, displayHeight);
+    const offsetX = (displayWidth - size) / 2;
+    const offsetY = (displayHeight - size) / 2;
 
     const zoomFactor = e.deltaY > 0 ? 1.1 : 0.9;
 
@@ -402,7 +451,7 @@ export default function PoliticalCompass() {
   return (
     <div className="relative w-full h-full">
       {mouseCoords && (
-        <div className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-white px-4 py-2 rounded shadow-md z-10">
+        <div className="absolute bottom-4 right-4 bg-white px-4 py-2 rounded shadow-md z-10 pointer-events-none">
           <span className="font-mono text-sm">
             X: {mouseCoords.x.toFixed(2)}, Y: {mouseCoords.y.toFixed(2)}
           </span>
@@ -443,6 +492,7 @@ export default function PoliticalCompass() {
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseLeave}
         onWheel={handleWheel}
+        onClick={(e) => e.stopPropagation()}
       />
     </div>
   );
